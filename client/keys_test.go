@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 func TestV2KeysURLHelper(t *testing.T) {
@@ -105,7 +105,7 @@ func TestV2KeysURLHelper(t *testing.T) {
 }
 
 func TestGetAction(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com/v2/keys"}
+	ep := url.URL{Scheme: "http", Host: "example.com", Path: "/v2/keys"}
 	baseWantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
@@ -171,7 +171,7 @@ func TestGetAction(t *testing.T) {
 }
 
 func TestWaitAction(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com/v2/keys"}
+	ep := url.URL{Scheme: "http", Host: "example.com", Path: "/v2/keys"}
 	baseWantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
@@ -221,7 +221,7 @@ func TestWaitAction(t *testing.T) {
 
 func TestSetAction(t *testing.T) {
 	wantHeader := http.Header(map[string][]string{
-		"Content-Type": []string{"application/x-www-form-urlencoded"},
+		"Content-Type": {"application/x-www-form-urlencoded"},
 	})
 
 	tests := []struct {
@@ -356,6 +356,18 @@ func TestSetAction(t *testing.T) {
 			wantURL:  "http://example.com/foo",
 			wantBody: "ttl=180&value=",
 		},
+
+		// Refresh is set
+		{
+			act: setAction{
+				Key:     "foo",
+				TTL:     3 * time.Minute,
+				Refresh: true,
+			},
+			wantURL:  "http://example.com/foo",
+			wantBody: "refresh=true&ttl=180&value=",
+		},
+
 		// Dir is set
 		{
 			act: setAction{
@@ -412,7 +424,7 @@ func TestSetAction(t *testing.T) {
 
 func TestCreateInOrderAction(t *testing.T) {
 	wantHeader := http.Header(map[string][]string{
-		"Content-Type": []string{"application/x-www-form-urlencoded"},
+		"Content-Type": {"application/x-www-form-urlencoded"},
 	})
 
 	tests := []struct {
@@ -513,7 +525,7 @@ func TestCreateInOrderAction(t *testing.T) {
 
 func TestDeleteAction(t *testing.T) {
 	wantHeader := http.Header(map[string][]string{
-		"Content-Type": []string{"application/x-www-form-urlencoded"},
+		"Content-Type": {"application/x-www-form-urlencoded"},
 	})
 
 	tests := []struct {
@@ -633,15 +645,14 @@ func assertRequest(got http.Request, wantMethod string, wantURL *url.URL, wantHe
 	} else {
 		if wantBody == nil {
 			return fmt.Errorf("want.Body=%v got.Body=%s", wantBody, got.Body)
-		} else {
-			gotBytes, err := ioutil.ReadAll(got.Body)
-			if err != nil {
-				return err
-			}
+		}
+		gotBytes, err := ioutil.ReadAll(got.Body)
+		if err != nil {
+			return err
+		}
 
-			if !reflect.DeepEqual(wantBody, gotBytes) {
-				return fmt.Errorf("want.Body=%s got.Body=%s", wantBody, gotBytes)
-			}
+		if !reflect.DeepEqual(wantBody, gotBytes) {
+			return fmt.Errorf("want.Body=%s got.Body=%s", wantBody, gotBytes)
 		}
 	}
 
@@ -1213,7 +1224,7 @@ func TestHTTPKeysAPIGetResponse(t *testing.T) {
 		Node: &Node{
 			Key: "/pants/foo/bar",
 			Nodes: []*Node{
-				&Node{Key: "/pants/foo/bar/baz", Value: "snarf", CreatedIndex: 21, ModifiedIndex: 25},
+				{Key: "/pants/foo/bar/baz", Value: "snarf", CreatedIndex: 21, ModifiedIndex: 25},
 			},
 			CreatedIndex:  uint64(19),
 			ModifiedIndex: uint64(25),
@@ -1234,7 +1245,6 @@ func TestHTTPKeysAPIGetResponse(t *testing.T) {
 func TestHTTPKeysAPIDeleteAction(t *testing.T) {
 	tests := []struct {
 		key        string
-		value      string
 		opts       *DeleteOptions
 		wantAction httpAction
 	}{
